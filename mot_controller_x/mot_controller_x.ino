@@ -12,8 +12,6 @@ const double DTR = M_PI / 180.0;  //constant for conversion degrees to radians
 
 const char Version[]="mot_controller_x.ino, 2020-06-06/ MBSat "; // axis X controller
 
-
-
 //I/O pins definitions
 const int LED_RED       =  4; //WEST
 const int LED_GREEN     =  7; //EAST
@@ -105,9 +103,6 @@ void loop(){
     char sbtrX[10];  // string azimut
     char sbtrY[10];  // string elevation
     byte pos1,pos2;  // positions of two " " characters in Orbitron or WXtrack message "AZ126.42 EL4.17 UP0 DN0"
-    float Az, El, X, Y;
-    Az=0.0;
-    El=0.0;
     
     buffer += rx;  // add character to the string buffer
     if (!((rx == '\n') || (rx == '\r')))
@@ -233,41 +228,27 @@ void loop(){
 
                 char sbtrAz[10]; // string azimut
                 char sbtrEl[10]; // string elevation
+                float Az, El, X, Y;
+                Az = 0.0;
+                El = 0.0;
                 buffer.toCharArray(tempbuf, 40);
                 sscanf(tempbuf,"AZ EL %s %s",sbtrAz, sbtrEl);
                 Az = strtod(sbtrAz,NULL);
                 El = strtod(sbtrEl,NULL);
-                float Az2, El2;
-                MBSat_XYtoAzEl(X, Y, &Az2, &El2);
+                #ifdef DEBUG
                 Serial.println(Az);
                 Serial.println(El);
-                
-              Serial.print("AZ");
-              Serial.print(Az2);
-              Serial.print(" EL");
-              Serial.println(El2);
-
-                #ifdef DEBUG
-                referenced = true;
                 #endif
                 
-                MBSat_AzEltoXY(Az, El, &X, &Y);
-                Serial.print("X=" );
-                Serial.print(X);
-                Serial.print(" Y=" );
-                Serial.print(Y);
+                float Az2, El2;
+                get_pos(&Az2, &El2);
+                Serial.print("AZ");
+                Serial.print(Az2);
+                Serial.print(" EL");
+                Serial.println(El2);
+                move_to(Az, El);
 
-                if(abs(X-oldX)>stepd)
-                {
-                  goto_posf(X);
-                  oldX = X;
-                }
-                if(abs(Y-oldY)>stepd)
-                {
-                    swSerial.print("pos"); 
-                    swSerial.println(Y);
-                    oldY = Y;
-                }  
+                  
                 
 
 
@@ -333,6 +314,68 @@ void hall_sens_isr()
 
 }
 
+
+float get_y_pos() {
+  char swtempbuf[41];  // keeps the command temporary until CRLF
+  char wt[20];
+  String swser_buffer;
+
+  swSerial.println("dgetpos");
+  delay(100);
+  while (swSerial.available()) {
+    char rx = swSerial.read();
+    swser_buffer += rx;
+    #ifdef DEBUG
+    Serial.print(rx);
+    #endif
+  }
+  swser_buffer.toCharArray(swtempbuf, 40);
+  sscanf(swtempbuf,"dpos_y=%s",&wt);
+  float pos = 69.420;
+  pos = strtod(wt,NULL);
+  #ifdef DEBUG
+  Serial.print("Ydeg -> ");
+  Serial.println(pos);
+  #endif
+  return pos;
+}
+
+void get_pos(float* Az, float* El) {
+  float currentX = oldX;
+  float currentY = get_y_pos();
+  MBSat_XYtoAzEl(currentX, currentY, Az, El);
+}
+
+void move_to(float Az, float El) {
+                float currentX = oldX;
+                float currentY = get_y_pos();
+                float X = 0.0;
+                float Y = 0.0;
+                MBSat_AzEltoXY(Az, El, &X, &Y);
+                #ifdef DEBUG
+                Serial.print("X->" );
+                Serial.print(currentX);
+                Serial.print('|');
+                Serial.print(X);
+                Serial.print(", Y->" );
+                Serial.print(currentY);
+                Serial.print('|');
+                Serial.println(Y);
+                referenced = true;
+                #endif
+                
+                if(abs(X-oldX)>stepd)
+                {
+                  goto_posf(X);
+                  oldX = X;
+                }
+                if(abs(Y-oldY)>stepd)
+                {
+                    swSerial.print("pos"); 
+                    swSerial.println(Y);
+                    oldY = Y;
+                }
+}
 
 //*****Help Routines and Functions*****//
 
@@ -567,7 +610,7 @@ void go_ref()
   referenced = false;
   detachInterrupt(digitalPinToInterrupt(HALL_SENS));
   RefSwVal=digitalRead(REF_SW);
-  if(RefSwVal == 0) //ref sw neni zmacknuty, jedeme -
+  if(RefSwVal == 0) // ref sw is not pressed, go -
   {
     move_pos();
     while(RefSwVal ==0)
@@ -578,7 +621,7 @@ void go_ref()
     delay(250);
     
   }
-  else //ref sw je zmacknuty, jedeme +
+  else // ref sw is pressed, go +
   {
     move_neg();
     while(RefSwVal==1)

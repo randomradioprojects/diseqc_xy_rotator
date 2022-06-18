@@ -14,8 +14,6 @@ const char Version[]="mot_controller_x.ino, 2020-06-06/ MBSat "; // axis X contr
 
 
 //I/O pins definitions
-const int BUTTON_WEST   =  6;     
-const int BUTTON_EAST   =  5; 
 const int LED_RED       =  4; //WEST
 const int LED_GREEN     =  7; //EAST
 const int HALL_SENS     =  2;
@@ -66,8 +64,6 @@ void setup() {
   swSerial.begin(9600);
   swSerial.listen();
   
-  pinMode(BUTTON_EAST, INPUT_PULLUP);
-  pinMode(BUTTON_WEST, INPUT_PULLUP);
   pinMode(REF_SW, INPUT_PULLUP);
   
   pinMode(RELE_POS, OUTPUT);
@@ -102,34 +98,6 @@ void setup() {
 
 
 void loop(){
-/*
-  int BtnWestVal = digitalRead(BUTTON_WEST);
-  int BtnEastVal = digitalRead(BUTTON_EAST); 
-  
-
-  if(BtnWestVal== LOW) {
-     digitalWrite(RELE_NEG, LOW);
-     digitalWrite(RELE_POS, HIGH);
-     digitalWrite(LED_RED, HIGH);
-     
-  }else
-  {
-   digitalWrite(RELE_POS, LOW);
-   digitalWrite(LED_RED, LOW);
-   if(BtnEastVal== LOW) 
-    {
-      digitalWrite(RELE_POS, LOW);
-      digitalWrite(RELE_NEG, HIGH);
-      digitalWrite(LED_GREEN, HIGH);
-    }else
-    {
-      
-      digitalWrite(RELE_NEG, LOW);
-      digitalWrite(LED_GREEN, LOW);
-    }
-  }
-*/
-
   while (Serial.available() > 0)
   {
     int tmp;

@@ -3,6 +3,7 @@
 
 //CircularBuffer<float, 10> posfifo;
 
+#define DEBUG
 
 char Version[]="mot_controller_y.ino, 2020-06-06/ MBSat "; // Version
 
@@ -204,6 +205,9 @@ void loop(){
 //ISR Routines
 void hall_sens_isr()
 {
+  #ifdef DEBUG
+  curr_pos_puls = target_pos_puls;
+  #endif
   if(move_direction)
   {
     curr_pos_puls++;

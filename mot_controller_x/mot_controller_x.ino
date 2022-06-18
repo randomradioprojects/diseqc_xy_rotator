@@ -88,12 +88,12 @@ void setup() {
 
 
 
+String buffer;
 
 void loop(){
-  char tempbuf[41];  // keeps the command temporary until CRLF
-  String buffer;
   while (Serial.available() > 0)
   {
+    char tempbuf[41];  // keeps the command temporary until CRLF
     int tmp;
     char st[20];
     char rx = Serial.read();  // read a single charecter

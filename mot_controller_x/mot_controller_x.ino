@@ -101,8 +101,6 @@ void loop(){
     int tmp;
     char st[20];
     char rx = Serial.read();  // read a single charecter
-    char sbtrAz[10]; // string azimut
-    char sbtrEl[10]; // string elevation
     char sbtrX[10];  // string azimut
     char sbtrY[10];  // string elevation
     byte pos1,pos2;  // positions of two " " characters in Orbitron or WXtrack message "AZ126.42 EL4.17 UP0 DN0"
@@ -227,22 +225,19 @@ void loop(){
             } else       
        if (buffer.startsWith("AZ EL"))//Read command from Orbitron or WXtrack (Easy Comm I protocol: AZ172.08 EL3.34 UP0 DN0)
             {
-                //Serial.print("buffer=");
-                //Serial.println(buffer);
                 pos1 = buffer.indexOf(" ");
                 pos2 = buffer.indexOf(" ", pos1+1 );
-                
+
+                char sbtrAz[10]; // string azimut
+                char sbtrEl[10]; // string elevation
                 buffer.toCharArray(tempbuf, 40);
-                //substring(string, sub, position, length);
-                substring(tempbuf, sbtrAz,  3, pos1-2);
-                substring(tempbuf, sbtrEl,  pos1+4, pos2-pos1-3);
-                //Serial.println(sbtrAz);
-                //Serial.println(sbtrEl); 
-                Az =  strtod(sbtrAz,NULL);
-                El =  strtod(sbtrEl,NULL);
-                
+                sscanf(tempbuf,"AZ EL %s %s",sbtrAz, sbtrEl);
+                Az = strtod(sbtrAz,NULL);
+                El = strtod(sbtrEl,NULL);
                 float Az2, El2;
                 MBSat_XYtoAzEl(X, Y, &Az2, &El2);
+                Serial.println(Az);
+                Serial.println(El);
                 
               Serial.print("AZ");
               Serial.print(Az2);

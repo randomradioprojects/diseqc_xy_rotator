@@ -10,7 +10,7 @@
 const double RTD = 180.0 / M_PI;  //constant for conversion radians to degrees
 const double DTR = M_PI / 180.0;  //constant for conversion degrees to radians
 
-const char Version[]="mot_controller_x.ino, 2020-06-06/ MBSat "; // axis X controller
+const char Version[] = "mot_controller_x.ino, 2020-06-06/ MBSat "; // axis X controller
 
 //I/O pins definitions
 const int LED_RED       =  4; //WEST
@@ -25,12 +25,12 @@ const int swser_tx      =  A2;
 
 const int ppd =  36; //pulses per degree, resolution of hall motor rev counter
 
-byte RefSwVal = 0;
+const float stepd = 1.0;
 
-float MaxRange; //max angle for the axis, number fom 1 to 90 degree
+float MaxRange = 0; //max angle for the axis, number fom 1 to 90 degree
 
-float oldX, oldY;
-float stepd = 1.0;
+float oldX = 0;
+float oldY = 0;
 
 volatile float curr_pos_float = 0.0;  
 volatile float target_pos_float = 0.0;
@@ -38,18 +38,13 @@ volatile float target_pos_float = 0.0;
 volatile int curr_pos_puls = 0;
 volatile int target_pos_puls = 0;
 
-float ref_offset_degrees= 0;             //Offset from reference switch, degrees, used by axis referencing 
+float ref_offset_degrees = 0;             //Offset from reference switch, degrees, used by axis referencing 
 int ref_offset_pulses = 0;  //Offset from reference switch, in pulses, used by axis referencing 
 
 bool referenced = false;
 
 volatile bool move_direction = true;
 volatile bool moving = false;
-
-char tempbuf[100];  // keeps the command temporary until CRLF
-String buffer;
-char swtempbuf[80];  // keeps the command temporary until CRLF
-String swser_buffer;
 
 NeoSWSerial swSerial(swser_rx, swser_tx); // RX, TX
 
@@ -95,6 +90,8 @@ void setup() {
 
 
 void loop(){
+  char tempbuf[41];  // keeps the command temporary until CRLF
+  String buffer;
   while (Serial.available() > 0)
   {
     int tmp;
@@ -212,6 +209,7 @@ void loop(){
             } else
       if (buffer.startsWith("getrswx")) // send back status of reference switch
             {
+               byte RefSwVal = 0;
                RefSwVal   = digitalRead(REF_SW);
                Serial.print("RSW status=");
                Serial.println(RefSwVal);  
@@ -417,23 +415,6 @@ double to_degrees(double radians) {
     return radians * (180.0 / M_PI);
 }
 
-
-void DigiTwist_AzEltoXY(float az, float el, float *x, float *y)
-{
-  float Xrad, Yrad, Azrad, Elrad;
-  //Y = arcsin (sin (AZ) * cos (EL)) 
-  Azrad = to_radians(az);
-  Elrad = to_radians(el);
-  Yrad = asin(sin(Azrad) * cos(Elrad));
-  *y=-to_degrees(Yrad);
-  //X = arccos (sin (EL) / cos (Y))
-  Xrad = acos(sin(Elrad)/ cos(Yrad ));
-  if(az>270.0 or  az<90.0){
-    Xrad = -Xrad;
-  }
-  *x = -to_degrees(Xrad);
-  
-}
 //---------------------------------------------------------------------------
 void MBSat_AzEltoXY(float az, float el, float *x, float *y)
 {
@@ -606,6 +587,7 @@ float pulses2angle(int pulses)
 
 void go_ref()
 {
+  byte RefSwVal = 0;
   stop_moving();
   referenced = false;
   detachInterrupt(digitalPinToInterrupt(HALL_SENS));

@@ -639,7 +639,7 @@ void go_ref()
   //goto_posf(0.0);//after referencing goto 0 degree
   Serial.flush();
   swSerial.flush();
-  
+  MBSat_AzEltoXY(0, 90, &oldX, &oldY);
 }
 
 void move_pos()

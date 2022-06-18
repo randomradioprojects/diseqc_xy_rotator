@@ -2,6 +2,7 @@
 #include <EEPROM.h>
 #include <math.h>
 
+#define DEBUG
 
 #include <NeoSWSerial.h> //Software serial is used to communicate with axis Y
 
@@ -245,12 +246,16 @@ void loop(){
               Serial.print(Az2);
               Serial.print(" EL");
               Serial.println(El2);
+
+                #ifdef DEBUG
+                referenced = true;
+                #endif
                 
-                //MBSat_AzEltoXY(Az, El, &X, &Y);
-                //Serial.print("X=" );
-                //Serial.print(X);
-                //Serial.print(" Y=" );
-                //Serial.print(Y);
+                MBSat_AzEltoXY(Az, El, &X, &Y);
+                Serial.print("X=" );
+                Serial.print(X);
+                Serial.print(" Y=" );
+                Serial.print(Y);
 
                 if(abs(X-oldX)>stepd)
                 {

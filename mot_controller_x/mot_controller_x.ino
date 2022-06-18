@@ -109,8 +109,10 @@ void loop(){
     El=0.0;
     
     buffer += rx;  // add character to the string buffer
-    if ((rx == '\n') || (rx == '\r'))
+    if (!((rx == '\n') || (rx == '\r')))
     {
+      continue;
+    }
     buffer.toCharArray(tempbuf, 40);
        if (buffer.startsWith("setlimx"))
             {
@@ -288,8 +290,7 @@ void loop(){
                 
                 
             } 
-            buffer = "";  //erase buffer for next command                     
-    }
+            buffer = "";  //erase buffer for next command
   
   }//end while (Serial.available() > 0)
   

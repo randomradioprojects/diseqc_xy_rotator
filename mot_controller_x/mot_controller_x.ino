@@ -265,50 +265,7 @@ void loop(){
             {
                swSerial.print("getrsw");
                //swSerial.listen(); 
-            } else  
-       if (buffer.startsWith("DTWG"))//position from DigiTwist Orbitron plugin //"DTWG-799+209" or DTWG+050=000 mean only X is moving
-            {
-              Serial.println(tempbuf);
-              Serial.println(tempbuf[4]);
-              Serial.println(tempbuf[8]);
-                if(tempbuf[8]== '=')
-                {
-                  //move only X axis
-                  substring(tempbuf, sbtrX,  5, 4);
-                  Serial.println("DigiTwist onlyX: ");
-                  Serial.println(sbtrX);
-                  X =  strtod(sbtrX,NULL)/10.0;
-                  goto_posf(X);
-                }else
-                if(tempbuf[4]== '=')
-                {
-                  //move only Y axis
-                  substring(tempbuf, sbtrY,  9, 4);
-                  Serial.println("DigiTwist onlyY: ");
-                  Serial.println(sbtrY);                  
-                  Y =  strtod(sbtrY,NULL)/10.0;
-                  swSerial.print("pos"); 
-                  swSerial.println(Y);
-                }else
-                {
-                substring(tempbuf, sbtrX,  5, 4);
-                substring(tempbuf, sbtrY,  9, 4);
-                Serial.println("DigiTwist: ");
-                Serial.println(sbtrX);
-                Serial.println(sbtrY); 
-                X =  strtod(sbtrX,NULL)/10.0;
-                Y =  strtod(sbtrY,NULL)/10.0;
-                Serial.print("X=" );
-                Serial.print(X);
-                Serial.print(" Y=" );
-                Serial.println(Y);
-                
-                swSerial.print("pos"); 
-                swSerial.println(Y);               
-                goto_posf(X);
-
-                }
-            }else     
+            } else       
        if (buffer.startsWith("AZ EL"))//Read command from Orbitron or WXtrack (Easy Comm I protocol: AZ172.08 EL3.34 UP0 DN0)
             {
                 //Serial.print("buffer=");
@@ -372,7 +329,6 @@ void loop(){
                 Serial.println(" * stop                     --stop both axes moving");
                 Serial.println(" * sox-3.0, soy-2.5         --set axes offsets");
                 Serial.println(" * getoffx, getoffy         --return actual offsets");
-                Serial.println(" * DTWG-799-209             --position command from DigiTwist, angles are X Y");
                 Serial.println(" * AZ360.0 EL90.0 az el     --position command from WXTrack, angles are Az El");
 
                 

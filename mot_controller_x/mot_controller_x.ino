@@ -3,7 +3,7 @@
 #include <math.h>
 
 
-#include <SoftwareSerial.h> //Software serial is used to communicate with axis Y
+#include <NeoSWSerial.h> //Software serial is used to communicate with axis Y
 
 
 const double RTD = 180.0 / M_PI;  //constant for conversion radians to degrees
@@ -54,7 +54,7 @@ String buffer;
 char swtempbuf[80];  // keeps the command temporary until CRLF
 String swser_buffer;
 
-SoftwareSerial swSerial(swser_rx, swser_tx); // RX, TX
+NeoSWSerial swSerial(swser_rx, swser_tx); // RX, TX
 
 
 
@@ -326,7 +326,7 @@ void loop(){
                 El =  strtod(sbtrEl,NULL);
                 
                 float Az2, El2;
-                MBSat_XYtoAzEl(X, Y, Az2, El2);
+                MBSat_XYtoAzEl(X, Y, &Az2, &El2);
                 
               Serial.print("AZ");
               Serial.print(Az2);

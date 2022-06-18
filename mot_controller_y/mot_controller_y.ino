@@ -289,7 +289,7 @@ void goto_posf(float target_float)
          }
        }else
        {
-         Serial.println("mes::Unable to move, do referencing first!!!");
+         Serial.println("mes::Unable to move, do referencing first!");
          go_ref();
        }
    }

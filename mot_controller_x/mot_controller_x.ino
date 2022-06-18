@@ -23,6 +23,9 @@ const int REF_SW        =  3;
 const int swser_rx      =  A3;
 const int swser_tx      =  A2;
 
+float lastEl = 0;
+float lastAz = 0;
+
 const int ppd =  36; //pulses per degree, resolution of hall motor rev counter
 
 const float stepd = 1.0;
@@ -219,7 +222,7 @@ void loop(){
                swSerial.print("getrsw");
                //swSerial.listen(); 
             } else       
-       if (buffer.startsWith("AZ EL"))//Read command from Orbitron or WXtrack (Easy Comm I protocol: AZ172.08 EL3.34 UP0 DN0)
+       if (buffer.startsWith("AZ") && buffer.length() >= 5)//Read command from Orbitron or WXtrack (Easy Comm I protocol: AZ172.08 EL3.34 UP0 DN0)
             {
                 pos1 = buffer.indexOf(" ");
                 pos2 = buffer.indexOf(" ", pos1+1 );
@@ -230,27 +233,23 @@ void loop(){
                 Az = 0.0;
                 El = 0.0;
                 buffer.toCharArray(tempbuf, 40);
-                sscanf(tempbuf,"AZ EL %s %s",sbtrAz, sbtrEl);
-                Az = strtod(sbtrAz,NULL);
-                El = strtod(sbtrEl,NULL);
-                #ifdef DEBUG
-                Serial.println(Az);
-                Serial.println(El);
-                #endif
-                
-                float Az2, El2;
-                get_pos(&Az2, &El2);
-                Serial.print("AZ");
-                Serial.print(Az2);
-                Serial.print(" EL");
-                Serial.println(El2);
-                move_to(Az, El);
-
-                  
-                
-
-
-
+                if(sscanf(tempbuf,"AZ%s EL%s",sbtrAz, sbtrEl) == 2) {
+                   Az = strtod(sbtrAz,NULL);
+                  El = strtod(sbtrEl,NULL);
+                  #ifdef DEBUG
+                  Serial.println(Az);
+                  Serial.println(El);
+                  #endif
+                  move_to(Az, El);
+                }
+                else {
+                  float Az2, El2;
+                  get_pos(&Az2, &El2);
+                  Serial.print("AZ");
+                  Serial.print(Az2);
+                  Serial.print(" EL");
+                  Serial.println(El2);
+                }
             }else                            
       if (buffer.startsWith("version")) // Check version of Arduino software
             {
@@ -339,9 +338,11 @@ float get_y_pos() {
 }
 
 void get_pos(float* Az, float* El) {
-  float currentX = oldX;
-  float currentY = get_y_pos();
-  MBSat_XYtoAzEl(currentX, currentY, Az, El);
+  //float currentX = oldX;
+  //float currentY = get_y_pos();
+  //MBSat_XYtoAzEl(currentX, currentY, Az, El);
+  *Az = lastAz;
+  *El = lastEl;
 }
 
 void move_to(float Az, float El) {
@@ -361,7 +362,8 @@ void move_to(float Az, float El) {
                 Serial.println(Y);
                 referenced = true;
                 #endif
-                
+                lastAz = Az;
+                lastEl = El;
                 if(abs(X-oldX)>stepd)
                 {
                   goto_posf(X);
@@ -420,17 +422,14 @@ void MBSat_AzEltoXY(float az, float el, float *x, float *y)
 {
     const float accuracy = 0.01; // rotor accuracy in degrees
 
-    if(el <= accuracy)
-        *x = 90.0;
-    else if(el >= (90.0 - accuracy))
-        *x = 0.0;
-    else
-        *x = -atan(-cos(az * DTR) / tan(el * DTR)) * RTD;
+    if(el <= accuracy) { *x = 90.0; }
+    else if(el >= (90.0 - accuracy)) { *x = 0.0; }
+    else { *x = -atan(-cos(az * DTR) / tan(el * DTR)) * RTD; }
 
-        *y = -asin(sin(az * DTR) * cos(el * DTR)) * RTD;
+    *y = -asin(sin(az * DTR) * cos(el * DTR)) * RTD;
 }
 //---------------------------------------------------------------------------
-void MBSat_XYtoAzEl(float X, float Y, float *az, float *el)
+void MBSat_XYtoAzEl(float X, float Y, float *az, float *el) // broken
 {
     float AZIM, ELEV;
     float tanX, tanX2, sinY2, sinY, A, B;
@@ -520,8 +519,10 @@ void goto_posf(float target_float)
    
    target_pos_puls = angle2pulses(target_pos_float); 
 
+   #ifdef DEBUG
    Serial.print("TargetPosPulses=");
    Serial.println(target_pos_puls);
+   #endif
    
    if(moving==false)//stojime
    { 
@@ -539,7 +540,7 @@ void goto_posf(float target_float)
          }
        }else
        {
-         Serial.println("mes::Unable to move, do referencing first!!!");
+         Serial.println("mes::Unable to move, do referencing first!");
          go_ref();
        }
    }
@@ -622,6 +623,8 @@ void go_ref()
   Serial.flush();
   swSerial.flush();
   MBSat_AzEltoXY(0, 90, &oldX, &oldY);
+  float lastAz = 0;
+  float lastEl = 90;
 }
 
 void move_pos()

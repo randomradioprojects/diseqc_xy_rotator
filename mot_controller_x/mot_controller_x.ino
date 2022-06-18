@@ -78,8 +78,6 @@ void setup() {
   
   ref_offset_pulses = EEPROMReadInt(0);
   ref_offset_degrees=pulses2angle(ref_offset_pulses);
-
-  //go_ref();
   
   MaxRange = 90.0;
   
@@ -103,17 +101,16 @@ void loop(){
     int tmp;
     char st[20];
     char rx = Serial.read();  // read a single charecter
-    char sbtrAz[10];//string azimut
-    char sbtrEl[10];//string elevation
-    char sbtrX[10];//string azimut
-    char sbtrY[10];//string elevation
-    byte pos1,pos2; //positions of two " " characters in Orbitron or WXtrack message "AZ126.42 EL4.17 UP0 DN0"
+    char sbtrAz[10]; // string azimut
+    char sbtrEl[10]; // string elevation
+    char sbtrX[10];  // string azimut
+    char sbtrY[10];  // string elevation
+    byte pos1,pos2;  // positions of two " " characters in Orbitron or WXtrack message "AZ126.42 EL4.17 UP0 DN0"
     float Az, El, X, Y;
     Az=0.0;
     El=0.0;
     
-    buffer += rx;  //add character to the string buffer
-    //Serial.print(rx);
+    buffer += rx;  // add character to the string buffer
     if ((rx == '\n') || (rx == '\r'))
     {
     buffer.toCharArray(tempbuf, 40);
@@ -159,12 +156,6 @@ void loop(){
                 //swSerial.listen();
             } else                    
       if (buffer.startsWith("stop")) // 
-            {
-               Serial.println("StopX");
-               stop_moving();
-               swSerial.println("stop");
-            } else
-      if (buffer.startsWith("DTWS")) //Stop from DigiTwist 
             {
                Serial.println("StopX");
                stop_moving();
@@ -312,34 +303,6 @@ void loop(){
     char rx = swSerial.read();
     Serial.print(rx);
   }
-
-  
-//  while (swSerial.available() )
-//  {
-//    //int tmp;
-//    char swser_st[30];
-//    char swser_rx = swSerial.read();  // read a single charecter
-//    swser_buffer += swser_rx;  //add character to the string buffer
-//    if ((swser_rx == '\n') || (swser_rx == '\r'))
-//    {
-//      swser_buffer.toCharArray(swtempbuf, 40);
-//      
-//            if (swser_buffer.startsWith("ppos"))
-//            {
-//                sscanf(swtempbuf,"ppos%s",&swser_st); 
-//                Serial.print("POSY=");
-//                Serial.println(swser_st);                 
-//            }else
-//            if (swser_buffer.startsWith("mes::"))
-//            {
-//                sscanf(swtempbuf,"mes::%s",&swser_st); 
-//                Serial.print("MessageY=");
-//                Serial.println(swser_st);                 
-//            }            
-//
-//             swser_buffer = "";           
-//    }
-//  }
   
 }//end LOOP
 

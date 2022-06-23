@@ -234,7 +234,7 @@ void loop(){
                 El = 0.0;
                 buffer.toCharArray(tempbuf, 40);
                 if(sscanf(tempbuf,"AZ%s EL%s",sbtrAz, sbtrEl) == 2) {
-                   Az = strtod(sbtrAz,NULL);
+                  Az = strtod(sbtrAz,NULL);
                   El = strtod(sbtrEl,NULL);
                   #ifdef DEBUG
                   Serial.println(Az);
@@ -338,15 +338,13 @@ float get_y_pos() {
 }
 
 void get_pos(float* Az, float* El) {
-  //float currentX = oldX;
-  //float currentY = get_y_pos();
-  //MBSat_XYtoAzEl(currentX, currentY, Az, El);
-  *Az = lastAz;
-  *El = lastEl;
+  float currentX = pulses2angle(curr_pos_puls);
+  float currentY = get_y_pos();
+  MBSat_XYtoAzEl(currentX, currentY, Az, El);
 }
 
 void move_to(float Az, float El) {
-                float currentX = oldX;
+                float currentX = pulses2angle(curr_pos_puls);
                 float currentY = get_y_pos();
                 float X = 0.0;
                 float Y = 0.0;
@@ -429,73 +427,59 @@ void MBSat_AzEltoXY(float az, float el, float *x, float *y)
     *y = -asin(sin(az * DTR) * cos(el * DTR)) * RTD;
 }
 //---------------------------------------------------------------------------
-void MBSat_XYtoAzEl(float X, float Y, float *az, float *el) // broken
-{
-    float AZIM, ELEV;
-    float tanX, tanX2, sinY2, sinY, A, B;
-
-    tanX = tan(X * DTR);
-    tanX2 = tanX * tanX;
-    sinY  = sin(Y * DTR);
-    sinY2 = sinY * sinY;
-
-    // B = cos Az
-    B = sqrt(-1.0 * ((tanX2 * sinY2 - tanX2) / (sinY2 + tanX2)));
-    // A = cos El
-    A  = sinY / sqrt(1.0 - B*B) ;
-
-    // cos Az = B and therefore
-    AZIM = acos(B) * RTD;
-    //cos El = A and therefore
-    ELEV = acos(A) * RTD;
-
-    // make sure we got some return value (even if it is wrong)
-    *az = AZIM;
-    *el = ELEV;
-
-    if(ELEV > 0) {
-        if(ELEV > 90)
-            ELEV = 180.0 - ELEV;
-        else {
-            ELEV = 0;
-            *el = ELEV;
-        }
-    }
+void MBSat_XYtoAzEl(float X, float Y, float *az, float *el) { // do not ask how many stupid hours it took to get this to work
+    // Motor Description:
+    // X -> lower motor -> North-South
+    // Y -> upper motor -> East-West
+    // X+ -> North | X- -> South
+    // Y+ -> West  | Y- -> East
+    
+    float AZIM = acos(sqrt( (pow(cos(Y * DTR), 2) * pow(tan(X * DTR), 2)) / (pow(sin(Y * DTR), 2) + pow(tan(X * DTR), 2)) )) * RTD;
 
     // determine quadrant from X and Y angle, then determine correct azimuth and elevation
     if(X < 0) {
-        if(Y < 0) // quadrant = 4;
-            *az = 360.0 - AZIM;
-        else if(Y > 0) // quadrant = 1;
-            *az = AZIM;
-        else { // quadrant = 14;
-            *az = 0;
-            *el = 90.0 - fabs(X);
+        if(Y < 0) {
+            *az = 180 - AZIM;
+        }
+        else if(Y > 0) {
+            *az = AZIM + 180;
+        }
+        else { // X movement but no Y movement case
+            *az = 180;
+            *el = fabs(X + 90);
+            return;
         }
     }
     else if(X > 0) {
-        if(Y < 0) // quadrant = 3;
-            *az = 180.0 + AZIM;
-        else if(Y > 0) // quadrant = 2;
-            *az = 180.0 - AZIM;
-        else {
-            // quadrant = 23;
-            *az = 180;
-            *el = 90.0 - fabs(X);
+        if(Y < 0) {
+            *az = AZIM;
+        }
+        else if(Y > 0) {
+            *az = (360 - AZIM);
+        }
+        else { // X movement but no Y movement case
+            *az = 0;
+            *el = fabs(X - 90);
+            return;
         }
     }
-    else { // X = 0, antenna move only in E-W direction and back
-        if(Y > 0) // quadrant = 12;
-            *az = AZIM;
-        else if(Y < 0) // quadrant = 34;
-            *az = AZIM;
-        else {
-            // quadrant= 0;
+    else { // X=0 case
+        if(Y > 0) {
+            *az = 270;
+            *el = fabs(Y - 90);
+        }
+        else if(Y < 0) {
+            *az = 90; 
+            *el = fabs(Y + 90);
+        }
+        else { // Both motors are in 0 position -> could Azimuth=0 confuse software?
             *az = 0;
             *el = 90;
         }
+        return;
     }
-
+    
+    *el = atan(cos(*az * DTR) / tan(X * DTR)) * RTD; // since we now have azimuth we can solve elevation
 }
 
 
@@ -619,12 +603,9 @@ void go_ref()
   curr_pos_puls = ref_offset_pulses;
   attachInterrupt(digitalPinToInterrupt(HALL_SENS), hall_sens_isr, RISING); 
   referenced = true;
-  //goto_posf(0.0);//after referencing goto 0 degree
+  move_to(0, 90); //after referencing goto Az 0 El 90
   Serial.flush();
   swSerial.flush();
-  MBSat_AzEltoXY(0, 90, &oldX, &oldY);
-  float lastAz = 0;
-  float lastEl = 90;
 }
 
 void move_pos()

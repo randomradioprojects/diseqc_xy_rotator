@@ -23,9 +23,6 @@ const int REF_SW        =  3;
 const int swser_rx      =  A3;
 const int swser_tx      =  A2;
 
-float lastEl = 0;
-float lastAz = 0;
-
 const int ppd =  36; //pulses per degree, resolution of hall motor rev counter
 
 const float stepd = 1.0;
@@ -360,8 +357,6 @@ void move_to(float Az, float El) {
                 Serial.println(Y);
                 referenced = true;
                 #endif
-                lastAz = Az;
-                lastEl = El;
                 if(abs(X-oldX)>stepd)
                 {
                   goto_posf(X);
@@ -603,9 +598,11 @@ void go_ref()
   curr_pos_puls = ref_offset_pulses;
   attachInterrupt(digitalPinToInterrupt(HALL_SENS), hall_sens_isr, RISING); 
   referenced = true;
-  move_to(0, 90); //after referencing goto Az 0 El 90
   Serial.flush();
   swSerial.flush();
+  oldX = 0;
+  oldY = 0;
+  move_to(0, 90); //after referencing goto Az 0 El 90
 }
 
 void move_pos()

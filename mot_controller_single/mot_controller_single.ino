@@ -1,197 +1,122 @@
-class motor {
-public:
-  void init(int pinPositive, int pinNegative, int referenceSwitch, float referencePosition, int ppd) {
-    _pinPositive = pinPositive;
-    _pinNegative = pinNegative;
-    _referenceSwitch = referenceSwitch;
-    _referencePosition = referencePosition;
-    _ppd = ppd;
+// #define DEBUG
+// #define DEBUG_PWM
+// #define DEBUG_INSANE
+// #define DEBUG_WTF
 
-    pinMode(_pinPositive, OUTPUT);
-    pinMode(_pinNegative, OUTPUT);
-    pinMode(_referenceSwitch, INPUT);
-    
-    currentPulsePos = 0;
-    interruptEnabled = true;
-  }
+#include "mathstuff.h"
+#include "motor.h"
 
-  /*void setOffset(int offsetPulses) {
-    _offsetPulses = 0;
-  }*/
-  
-  void motorInterrupt() {
-    if(!interruptEnabled) {
-      return;
-    }
-    switch(currentDirection) {
-      case motorDirection::NONE:
-        Serial.println("what the fuck is wrong with your setup, the motors aint supposed to be moving rn breh");
-        motorSpeen(motorDirection::NONE);
-        return;
-        break;
-      case motorDirection::POSITIVE:
-        currentPulsePos++;
-        if(currentPulsePos >= targetPulsePos) {
-          motorSpeen(motorDirection::NONE);
-        }
-        break;
-      case motorDirection::NEGATIVE:
-        currentPulsePos--;
-        if(currentPulsePos <= targetPulsePos) {
-          motorSpeen(motorDirection::NONE);
-        }
-        break;
-    }
-  }
+/* start configuring here */
 
-  void reference() {
-    interruptEnabled = false;
-    
-    /* mnux motor */
-    if(digitalRead(_referenceSwitch)) {
-      Serial.println("already ref");
-    }
-    motorSpeen(motorDirection::NEGATIVE);
-    while(!digitalRead(_referenceSwitch)) { }
-    motorSpeen(motorDirection::NONE);
-    
-    /* felix motor */
-    /*if(digitalRead(_referenceSwitch) == 0) {
-      motorSpeen(motorDirection::POSITIVE);
-      while(!digitalRead(_referenceSwitch)) {}
-      motorSpeen(motorDirection::NONE);
-    } else {
-      motorSpeen(motorDirection::NEGATIVE);
-      while(!digitalRead(_referenceSwitch)) {}
-      motorSpeen(motorDirection::NONE);
-    }*/
-    
-    delay(250);
-    
-    currentPulsePos = degToPulses(_referencePosition);
-    interruptEnabled = true;
-  }
+#define X_HALL_PIN 3
+#define Y_HALL_PIN 2
 
-  void moveToPos(float posDegrees) {
-    moveToPulsePos(degToPulses(posDegrees));
-  }
-
-  float getCurrentPos() {
-    return pulsesToDeg(currentPulsePos);
-  }
-
-  void moveWait() {
-    while((currentDirection == motorDirection::POSITIVE) || (currentDirection == motorDirection::NEGATIVE)) {}
-  }
-
-  
-private:
-  /* stuff */
-  enum class motorDirection { NONE, POSITIVE, NEGATIVE };
-
-  /* constants */
-  float _referencePosition;
-  int _ppd;
-  /* pins */
-  int _pinPositive;
-  int _pinNegative;
-  int _referenceSwitch;
-
-  /* runtime idfk stuff */
-  int currentPulsePos;
-  int targetPulsePos;
-  bool interruptEnabled;
-  motorDirection currentDirection = motorDirection::NONE;
-  //int _offsetPulses = 0; // do we really need this???
-  
-  void motorSpeen(motorDirection direction) {
-    switch(direction) {
-      case motorDirection::NONE:
-        currentDirection = motorDirection::NONE;
-        digitalWrite(_pinPositive, LOW);
-        digitalWrite(_pinNegative, LOW);
-        Serial.println("movingn't");
-        break;
-      case motorDirection::POSITIVE:
-        currentDirection = motorDirection::POSITIVE;
-        digitalWrite(_pinPositive, HIGH);
-        digitalWrite(_pinNegative, LOW);
-        Serial.println("moving positive");
-        break;
-      case motorDirection::NEGATIVE:
-        currentDirection = motorDirection::NEGATIVE;
-        digitalWrite(_pinPositive, LOW);
-        digitalWrite(_pinNegative, HIGH);
-        Serial.println("moving negative");
-        break;
-    }
-  }
-
-  int degToPulses(float deg) {
-    return deg * _ppd;
-  }
-
-  float pulsesToDeg(int pulses) {
-    return pulses/((float)_ppd);
-  }
-  
-  void moveToPulsePos(int pos) {
-    targetPulsePos = pos;
-    if(pos == currentPulsePos) {
-      motorSpeen(motorDirection::NONE);
-      Serial.print("no need to move, already at");
-      Serial.print(currentPulsePos);
-      Serial.print("want ");
-      Serial.println(pos);
-      return;
-    }
-    interruptEnabled = true;
-    if(pos > currentPulsePos) {
-      Serial.print("moving positive, at ");
-      Serial.print(currentPulsePos);
-      Serial.print("want ");
-      Serial.println(pos);
-      motorSpeen(motorDirection::POSITIVE);
-    } else {
-      Serial.print("moving negative, at ");
-      Serial.print(currentPulsePos);
-      Serial.print("want ");
-      Serial.println(pos);
-      motorSpeen(motorDirection::NEGATIVE);
-    }
-  }
-  
+static struct motor::config config_x = {
+    .pin_positive = 9,
+    .pin_negative = 10,
+    .pin_ref = 8,
+    .ref_pos = 0,
+    .ppd = 37.0277777778,
+    .ref_pullup = true,
+    .ref_positive_state = LOW,
+    .ref_auto = true,
+    .pwm_smoothing = true,
+    .pwm_smoothing_deg = 5,
+    .pwm_min_fraction = 0.3, // 30% so motor/driver does not burn
+    .min_pos_diff_deg = 0.1,
 };
 
-motor motorX;
-motor motorY;
+static struct motor::config config_y = {
+    .pin_positive = 5,
+    .pin_negative = 6,
+    .pin_ref = 4,
+    .ref_pos = 0,
+    .ppd = 36.6388888889,
+    .ref_pullup = true,
+    .ref_positive_state = LOW,
+    .ref_auto = true,
+    .pwm_smoothing = true,
+    .pwm_smoothing_deg = 5,
+    .pwm_min_fraction = 0.3, // 30% so motor/driver does not burn
+    .min_pos_diff_deg = 0.1,
+};
 
-void motorXint() {
-  motorX.motorInterrupt();
+/* stop here*/
+
+static motor motorX;
+static motor motorY;
+
+static void motorXint() {
+    motorX.motorInterrupt();
+}
+
+static void motorYint() {
+    motorY.motorInterrupt();
+}
+
+static void moveToAzEl(float az, float el) {
+    float x;
+    float y;
+    MBSat_AzEltoXY(az, el, &x, &y);
+    motorX.moveToPos(x);
+    motorY.moveToPos(y);
 }
 
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);
-  motorX.init(5, 4, 3, -90, 38);
-  Serial.println("1");
-  attachInterrupt(digitalPinToInterrupt(2), motorXint, RISING);
-  Serial.println("2");
-  motorX.reference();
-  Serial.println("referenced!");
-  Serial.print("current position: ");
-  Serial.println(motorX.getCurrentPos());
-  motorX.moveToPos(1);
-  motorX.moveWait();
-  Serial.print("current position: ");
-  Serial.println(motorX.getCurrentPos());
-  motorX.reference();
-  Serial.println("referenced!");
-  Serial.print("current position: ");
-  Serial.println(motorX.getCurrentPos());
+    Serial.begin(115200);
+
+    motorX.init(config_x);
+    motorY.init(config_y);
+    attachInterrupt(digitalPinToInterrupt(X_HALL_PIN), motorXint, RISING);
+    attachInterrupt(digitalPinToInterrupt(Y_HALL_PIN), motorYint, RISING);
+
+    motorX.reference();
+    motorY.reference();
+
+    moveToAzEl(0, 90); // parking
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+static String buffer;
 
+void loop() {
+    while (Serial.available() > 0) {
+        char rx = Serial.read();
+        buffer += rx;
+        if (!((rx == '\n') || (rx == '\r'))) {
+            continue;
+        }
+        if ((buffer.startsWith("AZ")) && (buffer.length() < 26)) {
+            char strAz[10];
+            char strEl[10];
+            if (sscanf(buffer.c_str(), "AZ%s EL%s", strAz, strEl) == 2) {
+                float az, el;
+                az = strtod(strAz, NULL);
+                el = strtod(strEl, NULL);
+                moveToAzEl(az, el);
+            } else {
+                float az, el;
+                MBSat_XYtoAzEl(motorX.getCurrentPos(), motorY.getCurrentPos(), &az, &el);
+                char str_az[6];
+                char str_el[6];
+                dtostrf(az, 5, 1, str_az);
+                dtostrf(el, 5, 1, str_el);
+                Serial.print("AZ");
+                Serial.print(str_az);
+                Serial.print(" EL");
+                Serial.println(str_el);
+            }
+        } else if (buffer.startsWith("REF")) {
+            motorX.reference();
+            motorY.reference();
+        } else if (buffer.startsWith("DBG")) {
+            Serial.println("X:");
+            motorX.print_debug_state();
+            Serial.println("Y:");
+            motorY.print_debug_state();
+        } else if (buffer.startsWith("KILL")) {
+            motorX.stop();
+            motorY.stop();
+        }
+        buffer = "";
+    }
 }

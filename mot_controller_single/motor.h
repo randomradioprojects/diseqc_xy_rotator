@@ -23,6 +23,8 @@ public:
 
     void reference();
 
+    void pwmadjust(); // called in a loop, takes care of smooth start and stop. doesn't have to be called if PWM is disabled
+
     void moveToPos(float posDegrees) {
         float diff = fabs(getCurrentPos() - posDegrees);
         if (diff >= _config.min_pos_diff_deg) {

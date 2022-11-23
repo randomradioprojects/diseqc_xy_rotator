@@ -53,18 +53,6 @@ void motor::motorInterrupt() {
         break;
     }
 
-    if (_config.pwm_smoothing) {
-        int pulsediffc = abs(currentPulsePos - targetPulsePos);
-        int pulsediffs = abs(currentPulsePos - startPulsePos);
-        if (pulsediffc <= _pwm_smoothing_pulses) {
-            motorSpeen(currentDirection, (float)pulsediffc / _pwm_smoothing_pulses);
-        } else if ((pulsediffs <= _pwm_smoothing_pulses) && can_slow_start) {
-            motorSpeen(currentDirection, (float)pulsediffs / _pwm_smoothing_pulses);
-        } else {
-            can_slow_start = false;
-        }
-    }
-
 #ifdef DEBUG_WTF
     Serial.print("pulsepos: ");
     Serial.println(currentPulsePos);
@@ -99,6 +87,20 @@ void motor::reference() {
 #ifdef DEBUG
     Serial.println("referenced");
 #endif
+}
+
+void motor::pwmadjust() {
+    if (_config.pwm_smoothing && (currentDirection != motorDirection::NONE)) {
+        int pulsediffc = abs(currentPulsePos - targetPulsePos);
+        int pulsediffs = abs(currentPulsePos - startPulsePos);
+        if (pulsediffc <= _pwm_smoothing_pulses) {
+            motorSpeen(currentDirection, (float)pulsediffc / _pwm_smoothing_pulses);
+        } else if ((pulsediffs <= _pwm_smoothing_pulses) && can_slow_start) {
+            motorSpeen(currentDirection, (float)pulsediffs / _pwm_smoothing_pulses);
+        } else {
+            can_slow_start = false;
+        }
+    }
 }
 
 void motor::print_debug_state() {
@@ -136,7 +138,7 @@ void motor::stop() {
     digitalWrite(_config.pin_negative, LOW);
 }
 
-void motor::motorSpeen(motorDirection direction, float pwm = 1) {
+void motor::motorSpeen(motorDirection direction, float pwm) {
     if (pwm < _config.pwm_min_fraction) {
         pwm = _config.pwm_min_fraction;
     }

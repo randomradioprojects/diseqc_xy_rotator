@@ -19,7 +19,7 @@ static struct motor::config config_x = {
     .ppd = 37.0277777778,
     .ref_pullup = true,
     .ref_positive_state = LOW,
-    .ref_auto = true,
+    .ref_auto = false,
     .pwm_smoothing = true,
     .pwm_smoothing_deg = 5,
     .pwm_min_fraction = 0.3, // 30% so motor/driver does not burn
@@ -34,7 +34,7 @@ static struct motor::config config_y = {
     .ppd = 36.6388888889,
     .ref_pullup = true,
     .ref_positive_state = LOW,
-    .ref_auto = true,
+    .ref_auto = false,
     .pwm_smoothing = true,
     .pwm_smoothing_deg = 5,
     .pwm_min_fraction = 0.3, // 30% so motor/driver does not burn
@@ -118,5 +118,11 @@ void loop() {
             motorY.stop();
         }
         buffer = "";
+    }
+    if (config_x.pwm_smoothing) {
+        motorX.pwmadjust();
+    }
+    if (config_y.pwm_smoothing) {
+        motorY.pwmadjust();
     }
 }

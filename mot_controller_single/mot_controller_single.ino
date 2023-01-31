@@ -8,10 +8,25 @@
 
 /* start configuring here */
 
-#define X_HALL_PIN 3
-#define Y_HALL_PIN 2
+#define X_HALL_PIN 2
+#define Y_HALL_PIN 3
 
 static struct motor::config config_x = {
+    .pin_positive = 6,
+    .pin_negative = 5,
+    .pin_ref = 4,
+    .ref_pos = 0,
+    .ppd = 36.6388888889,
+    .ref_pullup = true,
+    .ref_positive_state = LOW,
+    .ref_auto = false,
+    .pwm_smoothing = false,
+    .pwm_smoothing_deg = 5,
+    .pwm_min_fraction = 0.7, // 70% min so motor/driver does not burn
+    .min_pos_diff_deg = 0.1,
+};
+
+static struct motor::config config_y = {
     .pin_positive = 9,
     .pin_negative = 10,
     .pin_ref = 8,
@@ -20,27 +35,11 @@ static struct motor::config config_x = {
     .ref_pullup = true,
     .ref_positive_state = LOW,
     .ref_auto = false,
-    .pwm_smoothing = true,
+    .pwm_smoothing = false,
     .pwm_smoothing_deg = 5,
-    .pwm_min_fraction = 0.3, // 30% so motor/driver does not burn
+    .pwm_min_fraction = 0.7, // 70% min so motor/driver does not burn
     .min_pos_diff_deg = 0.1,
 };
-
-static struct motor::config config_y = {
-    .pin_positive = 5,
-    .pin_negative = 6,
-    .pin_ref = 4,
-    .ref_pos = 0,
-    .ppd = 36.6388888889,
-    .ref_pullup = true,
-    .ref_positive_state = LOW,
-    .ref_auto = false,
-    .pwm_smoothing = true,
-    .pwm_smoothing_deg = 5,
-    .pwm_min_fraction = 0.3, // 30% so motor/driver does not burn
-    .min_pos_diff_deg = 0.1,
-};
-
 /* stop here*/
 
 static motor motorX;
@@ -57,13 +56,21 @@ static void motorYint() {
 static void moveToAzEl(float az, float el) {
     float x;
     float y;
+    /*Serial.print("moving to AZ,EL X,Y");
+    Serial.print(az);
+    Serial.print(",");
+    Serial.print(el);*/
     MBSat_AzEltoXY(az, el, &x, &y);
+    /*Serial.print(" ");
+    Serial.print(x);
+    Serial.print(",");
+    Serial.println(y);*/
     motorX.moveToPos(x);
     motorY.moveToPos(y);
 }
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
 
     motorX.init(config_x);
     motorY.init(config_y);
@@ -71,7 +78,9 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(Y_HALL_PIN), motorYint, RISING);
 
     motorX.reference();
+    // motorX.print_debug_state();
     motorY.reference();
+    // motorY.print_debug_state();
 
     moveToAzEl(0, 90); // parking
 }

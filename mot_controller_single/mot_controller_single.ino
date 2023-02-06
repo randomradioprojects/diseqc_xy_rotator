@@ -3,20 +3,23 @@
 // #define DEBUG_INSANE
 // #define DEBUG_WTF
 
+// #define SERIAL_ECHO
+
 #include "mathstuff.h"
-#include "motor.h"
+#include "motor_simple.h"
 
 /* start configuring here */
 
 #define X_HALL_PIN 2
 #define Y_HALL_PIN 3
-
+/*
+#define MOTOR_ADVANCED
 static struct motor::config config_x = {
     .pin_positive = 6,
     .pin_negative = 5,
     .pin_ref = 4,
     .ref_pos = 0,
-    .ppd = 36.6388888889,
+    .ppd = 36.9222222222,
     .ref_pullup = true,
     .ref_positive_state = LOW,
     .ref_auto = true,
@@ -31,7 +34,7 @@ static struct motor::config config_y = {
     .pin_negative = 10,
     .pin_ref = 8,
     .ref_pos = 0,
-    .ppd = 37.0277777778,
+    .ppd = 36.5777777778,
     .ref_pullup = true,
     .ref_positive_state = LOW,
     .ref_auto = true,
@@ -40,10 +43,34 @@ static struct motor::config config_y = {
     .pwm_min_fraction = 0.7, // 70% min so motor/driver does not burn
     .min_pos_diff_deg = 0.1,
 };
+*/
+static struct motor_simple::config config_x = {
+    .pin_positive = 6,
+    .pin_negative = 5,
+    .pin_ref = 4,
+    .ref_pos = 0,
+    .ppd = 36.9222222222,
+    .ref_pullup = true,
+    .ref_positive_state = LOW,
+    .ref_auto = true,
+    .min_pos_diff_deg = 0.1,
+};
+
+static struct motor_simple::config config_y = {
+    .pin_positive = 9,
+    .pin_negative = 10,
+    .pin_ref = 8,
+    .ref_pos = 0,
+    .ppd = 36.5777777778,
+    .ref_pullup = true,
+    .ref_positive_state = LOW,
+    .ref_auto = true,
+    .min_pos_diff_deg = 0.1,
+};
 /* stop here*/
 
-static motor motorX;
-static motor motorY;
+static motor_simple motorX;
+static motor_simple motorY;
 
 static void motorXint() {
     motorX.motorInterrupt();
@@ -70,7 +97,7 @@ static void moveToAzEl(float az, float el) {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(4800);
 
     motorX.init(config_x);
     motorY.init(config_y);
@@ -128,10 +155,12 @@ void loop() {
         }
         buffer = "";
     }
+#ifdef MOTOR_ADVANCED
     if (config_x.pwm_smoothing) {
         motorX.pwmadjust();
     }
     if (config_y.pwm_smoothing) {
         motorY.pwmadjust();
     }
+#endif
 }

@@ -1,6 +1,6 @@
 #define M_HALL 2
-#define M_P    9
-#define M_N    10
+#define M_P    6
+#define M_N    5
 
 #define OTHER_HALL 3
 

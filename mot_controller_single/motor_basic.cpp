@@ -1,5 +1,33 @@
 #include "motor_basic.h"
 
+#define PANIC(str, condition)                   \
+    do {                                        \
+        if (condition) {                        \
+            panic(str " -- " #condition, this); \
+        }                                       \
+    } while (0)
+
+static void panic(const char *str, motor_basic *mot) {
+    mot->print_debug_state();
+    Serial.print("panic: ");
+    Serial.println(str);
+    String buffer;
+    while (Serial.available() > 0) {
+        char rx = Serial.read();
+        buffer += rx;
+        if (!((rx == '\n') || (rx == '\r'))) {
+            continue;
+        }
+        if (buffer.startsWith("OK")) {
+            break;
+        }
+        mot->print_debug_state();
+        Serial.print("panic: ");
+        Serial.println(str);
+        buffer = "";
+    }
+}
+
 void motor_basic::init(struct config config) {
     _config = config;
 
@@ -9,10 +37,14 @@ void motor_basic::init(struct config config) {
         pinMode(_config.pin_ref, INPUT);
     }
 
+    pinMode(_config.pin_positive, OUTPUT);
+    pinMode(_config.pin_negative, OUTPUT);
+
     currentPulsePos = 0;
     interruptEnabled = true;
     currentDirection = motorDirection::NONE;
     ref_auto_last_state = digitalRead(_config.pin_ref);
+    isr_increment = 0;
 }
 
 void motor_basic::motorInterrupt() {
@@ -25,18 +57,13 @@ void motor_basic::motorInterrupt() {
     if (_config.ref_auto) {
         int state = digitalRead(_config.pin_ref);
         if (ref_auto_last_state != state) {
+            PANIC("out of range autoref", abs(currentPulsePos) > 100);
             currentPulsePos = _config.ref_pos;
-#ifdef DEBUG
-            Serial.println("ref_auto");
-#endif
         }
         ref_auto_last_state = state;
     }
 
     switch (currentDirection) {
-    case motorDirection::NONE:
-        motorSpeen(motorDirection::NONE);
-        break;
     case motorDirection::POSITIVE:
         if (currentPulsePos >= targetPulsePos) {
             motorSpeen(motorDirection::NONE);
@@ -48,19 +75,10 @@ void motor_basic::motorInterrupt() {
         }
         break;
     }
-
-#ifdef DEBUG_WTF
-    Serial.print("pulsepos: ");
-    Serial.println(currentPulsePos);
-#endif
 }
 
 void motor_basic::reference() {
     interruptEnabled = false;
-
-#ifdef DEBUG
-    Serial.println("referencing");
-#endif
 
     if (digitalRead(_config.pin_ref) == _config.ref_positive_state) {
         motorSpeen(motorDirection::POSITIVE);
@@ -75,13 +93,9 @@ void motor_basic::reference() {
     delay(250);
 
     currentPulsePos = _config.ref_pos;
-    interruptEnabled = true;
-
     ref_auto_last_state = digitalRead(_config.pin_ref);
 
-#ifdef DEBUG
-    Serial.println("referenced");
-#endif
+    interruptEnabled = true;
 }
 
 void motor_basic::print_debug_state() {
@@ -95,7 +109,7 @@ void motor_basic::print_debug_state() {
         Serial.println("-");
         break;
     case motorDirection::NONE:
-        Serial.println("/");
+        Serial.println("X");
         break;
     }
 
@@ -110,36 +124,29 @@ void motor_basic::print_debug_state() {
 void motor_basic::stop() {
     targetPulsePos = currentPulsePos;
     motorSpeen(motorDirection::NONE);
-    pinMode(_config.pin_positive, OUTPUT);
     digitalWrite(_config.pin_positive, LOW);
-    pinMode(_config.pin_negative, OUTPUT);
     digitalWrite(_config.pin_negative, LOW);
 }
 
 void motor_basic::motorSpeen(motorDirection direction) {
+    // safety to make sure isr_increment does not get set while the motor is moving in a different direction
+    if (currentDirection != direction && currentDirection != motorDirection::NONE) {
+        move_stop();
+        delay(50);
+    }
+
+    currentDirection = direction;
     switch (direction) {
     case motorDirection::NONE:
-        currentDirection = motorDirection::NONE;
         move_stop();
-#ifdef DEBUG
-        Serial.println("motor direction: none");
-#endif
         break;
     case motorDirection::POSITIVE:
-        currentDirection = motorDirection::POSITIVE;
         isr_increment = 1;
         move_positive();
-#ifdef DEBUG_INSANE
-        Serial.println("motor direction: +");
-#endif
         break;
     case motorDirection::NEGATIVE:
-        currentDirection = motorDirection::NEGATIVE;
         isr_increment = -1;
         move_negative();
-#ifdef DEBUG_INSANE
-        Serial.println("motor direction: -");
-#endif
         break;
     }
 }
@@ -151,11 +158,9 @@ void motor_basic::moveToPulsePos(int pos) {
         return;
     }
 
-    motorDirection wantedDirection;
+    motorDirection wantedDirection = motorDirection::NEGATIVE;
     if (pos > currentPulsePos) {
         wantedDirection = motorDirection::POSITIVE;
-    } else {
-        wantedDirection = motorDirection::NEGATIVE;
     }
 
     if (currentDirection != wantedDirection) {

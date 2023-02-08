@@ -49,7 +49,7 @@ static struct motor_simple::config config_x = {
     .pin_negative = 5,
     .pin_ref = 4,
     .ref_pos = 0,
-    .ppd = 36,
+    .ppd = 36.9222222222,
     .ref_pullup = true,
     .ref_positive_state = LOW,
     .ref_auto = true,
@@ -61,7 +61,7 @@ static struct motor_simple::config config_y = {
     .pin_negative = 10,
     .pin_ref = 8,
     .ref_pos = 0,
-    .ppd = 36,
+    .ppd = 36.5777777778,
     .ref_pullup = true,
     .ref_positive_state = LOW,
     .ref_auto = true,
@@ -97,7 +97,7 @@ static void moveToAzEl(float az, float el) {
 }
 
 void setup() {
-    Serial.begin(4800);
+    Serial.begin(9600);
 
     motorX.init(config_x);
     motorY.init(config_y);
@@ -155,6 +155,8 @@ void loop() {
         }
         buffer = "";
     }
+    motorX.loop();
+    motorY.loop();
 #ifdef MOTOR_ADVANCED
     if (config_x.pwm_smoothing) {
         motorX.pwmadjust();

@@ -47,6 +47,10 @@ public:
         motor.stop();
     }
 
+    void loop() {
+        motor.loop();
+    }
+
 private:
     struct config _config;
 

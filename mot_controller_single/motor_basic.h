@@ -28,6 +28,8 @@ public:
     volatile int currentPulsePos;
     volatile int targetPulsePos;
 
+    void loop();
+
 private:
     struct config _config;
 

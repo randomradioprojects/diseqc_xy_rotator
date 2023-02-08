@@ -53,7 +53,7 @@ void motor_basic::motorInterrupt() {
     }
 
     currentPulsePos += isr_increment;
-
+    /*
     if (_config.ref_auto) {
         int state = digitalRead(_config.pin_ref);
         if (ref_auto_last_state != state) {
@@ -62,8 +62,9 @@ void motor_basic::motorInterrupt() {
         }
         ref_auto_last_state = state;
     }
+    */
 
-    switch (currentDirection) {
+    /*switch (currentDirection) {
     case motorDirection::POSITIVE:
         if (currentPulsePos >= targetPulsePos) {
             motorSpeen(motorDirection::NONE);
@@ -74,7 +75,7 @@ void motor_basic::motorInterrupt() {
             motorSpeen(motorDirection::NONE);
         }
         break;
-    }
+    }*/
 }
 
 void motor_basic::reference() {
@@ -129,6 +130,11 @@ void motor_basic::stop() {
 }
 
 void motor_basic::motorSpeen(motorDirection direction) {
+    // motor is already moving, no need to do anything
+    if (currentDirection == direction) {
+        return;
+    }
+
     // safety to make sure isr_increment does not get set while the motor is moving in a different direction
     if (currentDirection != direction && currentDirection != motorDirection::NONE) {
         move_stop();
@@ -163,9 +169,7 @@ void motor_basic::moveToPulsePos(int pos) {
         wantedDirection = motorDirection::POSITIVE;
     }
 
-    if (currentDirection != wantedDirection) {
-        motorSpeen(wantedDirection);
-    }
+    motorSpeen(wantedDirection);
 }
 
 void motor_basic::move_positive() {
@@ -181,4 +185,23 @@ void motor_basic::move_negative() {
 void motor_basic::move_stop() {
     digitalWrite(_config.pin_positive, LOW);
     digitalWrite(_config.pin_negative, LOW);
+}
+
+void motor_basic::loop() {
+    if (!interruptEnabled) {
+        return;
+    }
+
+    switch (currentDirection) {
+    case motorDirection::POSITIVE:
+        if (currentPulsePos >= targetPulsePos) {
+            motorSpeen(motorDirection::NONE);
+        }
+        break;
+    case motorDirection::NEGATIVE:
+        if (currentPulsePos <= targetPulsePos) {
+            motorSpeen(motorDirection::NONE);
+        }
+        break;
+    }
 }

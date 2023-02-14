@@ -1,45 +1,50 @@
 #define M_HALL 2
 #define M_P    6
 #define M_N    5
-
-#define OTHER_HALL 3
+#define M_REF  69
 
 // #define USE_PWM
-
 #define PWM_POWER 0.5
 
-volatile uint32_t pulses = 0;
-volatile uint32_t other_pulses = 0;
+#define REFZERO
 
-void other_motorint() {
-    other_pulses++;
-}
+volatile uint32_t pulses = 0;
 
 void motorint() {
     pulses++;
 }
 
+int ref_state = 0;
+
 void setup() {
     Serial.begin(9600);
     attachInterrupt(digitalPinToInterrupt(M_HALL), motorint, RISING);
-    attachInterrupt(digitalPinToInterrupt(OTHER_HALL), other_motorint, RISING);
     pinMode(M_P, OUTPUT);
     pinMode(M_N, OUTPUT);
+    pinMode(M_REF, INPUT);
 
     digitalWrite(M_N, LOW);
     digitalWrite(M_P, LOW);
+
+    ref_state = digitalRead(M_REF);
 }
 
 static unsigned long lastTime;
 static String buffer;
 
 void loop() {
+#ifdef REFZERO
+    int current_ref_state = digitalRead(M_REF);
+    if (current_ref_state != ref_state) {
+        pulses = 0;
+        ref_state = current_ref_state;
+    }
+#endif
+
     if ((millis() - lastTime) > 1000) {
         lastTime = millis();
-        Serial.print("main,other -> ");
-        Serial.print(pulses);
-        Serial.print(",");
-        Serial.println(other_pulses);
+        Serial.print("count -> ");
+        Serial.println(pulses);
     }
     while (Serial.available() > 0) {
         char rx = Serial.read();
@@ -80,7 +85,6 @@ void loop() {
             digitalWrite(M_N, LOW);
 #endif
             pulses = 0;
-            other_pulses = 0;
         }
         buffer = "";
     }
